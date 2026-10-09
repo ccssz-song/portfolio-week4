@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xinyi Song - Projects</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <span class="brand">Xinyi Song</span>
+      <button class="menu-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="resume.html">Resume</a></li>
+        <li><a href="projects.html" class="active">Projects</a></li>
+        <li><a href="contact.html">Contact Me</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="container">
+      <h1 class="section-title">Things I've Made</h1>
+      <p style="text-align:center; color:var(--text-soft); max-width:640px; margin:0 auto 2rem;">
+        A small collection of projects I've enjoyed building. Each one taught me something new!
+      </p>
+
+      <div class="projects-grid">
+        <article class="project-card featured todo-opener" tabindex="0" role="button" aria-label="Open To-Do List app">
+          <img class="thumb" src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=minimal%20to-do%20list%20app%20interface%20pink%20white%20pastel%20checklist%20calendar%20clean%20modern%20UI&image_size=landscape_16_9" alt="To-Do List app preview" />
+          <div class="body">
+            <h3>To-Do List App</h3>
+            <p>A clean, pink-themed to-do app with a calendar date picker, emoji + priority tags, checkboxes for done items, and one-click delete. Click the card to try it live!</p>
+            <div class="tags">
+              <span class="tag">HTML</span>
+              <span class="tag">CSS</span>
+              <span class="tag">JavaScript</span>
+            </div>
+            <span class="open-hint">Click to open →</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p class="fun-fact"><strong>Fun fact:</strong> I once learned to fold an origami crane without looking at any instructions — it took 47 tries!</p>
+    <p class="footer-copy">© 2026 Xinyi Song · Made with care</p>
+  </footer>
+
+  <!-- Modal: the live To-Do List app, opened by clicking the card above -->
+  <div class="modal-overlay" id="todoModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="To-Do List app">
+      <button class="modal-close" id="modalClose" type="button" aria-label="Close">×</button>
+      <div class="modal-body">
+        <h2 class="modal-title">To-Do List</h2>
+        <p class="modal-sub">Pick a date on the calendar, write your task, and press Add.</p>
+        <p class="storage-line"><span class="storage-chip probing" id="storageStatus">⏳ Connecting…</span></p>
+
+        <div class="todo-add">
+          <input type="text" id="taskInput" placeholder="What do you need to do?" aria-label="Task description" />
+          <input type="date" id="dateInput" aria-label="Task date" />
+          <button class="btn" id="addBtn" type="button">Add</button>
+
+          <div class="todo-options">
+            <div class="emoji-picker" id="emojiPicker" role="group" aria-label="Pick an emoji">
+              <button type="button" class="emoji-btn is-selected" data-emoji="📝" aria-label="Note">📝</button>
+              <button type="button" class="emoji-btn" data-emoji="💼" aria-label="Work">💼</button>
+              <button type="button" class="emoji-btn" data-emoji="🏠" aria-label="Home">🏠</button>
+              <button type="button" class="emoji-btn" data-emoji="⭐" aria-label="Important">⭐</button>
+              <button type="button" class="emoji-btn" data-emoji="🎯" aria-label="Goal">🎯</button>
+              <button type="button" class="emoji-btn" data-emoji="🛒" aria-label="Shopping">🛒</button>
+              <button type="button" class="emoji-btn" data-emoji="💡" aria-label="Idea">💡</button>
+            </div>
+            <div class="prio-picker" id="prioPicker" role="group" aria-label="Pick a priority">
+              <button type="button" class="prio-btn prio-low" data-prio="low">Low</button>
+              <button type="button" class="prio-btn prio-med is-selected" data-prio="med">Medium</button>
+              <button type="button" class="prio-btn prio-high" data-prio="high">High</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="todo-counter" id="todoCounter" aria-live="polite"></p>
+
+        <ul class="todo-list" id="todoList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    // ----- Modal open / close -----
+    var opener = document.querySelector('.todo-opener');
+    var modal = document.getElementById('todoModal');
+    var closeBtn = document.getElementById('modalClose');
+
+    function openModal() {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      setTimeout(function () { document.getElementById('taskInput').focus(); }, 60);
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      opener.focus();
+    }
+
+    opener.addEventListener('click', openModal);
+    opener.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openModal();
+      }
+    });
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+    });
+
+    // ----- To-Do app logic -----
+    var taskInput = document.getElementById('taskInput');
+    var dateInput = document.getElementById('dateInput');
+    var addBtn = document.getElementById('addBtn');
+    var list = document.getElementById('todoList');
+    var counter = document.getElementById('todoCounter');
+
+    // Emoji + priority pickers (defaults match the selected buttons in HTML).
+    var selectedEmoji = '📝';
+    var selectedPrio = 'med';
+    var emojiPicker = document.getElementById('emojiPicker');
+    var prioPicker = document.getElementById('prioPicker');
+
+    function pickFrom(group, btn, attr, onChange) {
+      var prev = group.querySelector('.is-selected');
+      if (prev) prev.classList.remove('is-selected');
+      btn.classList.add('is-selected');
+      onChange(btn.getAttribute(attr));
+    }
+
+    emojiPicker.addEventListener('click', function (e) {
+      var btn = e.target.closest('.emoji-btn');
+      if (btn) pickFrom(emojiPicker, btn, 'data-emoji', function (v) { selectedEmoji = v; });
+    });
+
+    prioPicker.addEventListener('click', function (e) {
+      var btn = e.target.closest('.prio-btn');
+      if (btn) pickFrom(prioPicker, btn, 'data-prio', function (v) { selectedPrio = v; });
+    });
+
+    // Default the date picker to today.
+    var today = new Date();
+    var yyyy = today.getFullYear();
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = yyyy + '-' + mm + '-' + dd;
+
+    // ----- Supabase data layer (with localStorage fallback) -----
+    var SUPABASE_URL = 'https://psyrsaklatbmwjoppfcf.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_6-iCs9oqKzHdyRdMLOU_iQ_24UguYWE';
+    var sb = (window.supabase && window.supabase.createClient)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+      : null;
+
+    var items = [];
+    var LS_KEY = 'xinyi_todos_v1';
+    var storageMode = 'probing'; // 'supabase' | 'local'
+
+    function loadLocal() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+      catch (e) { return []; }
+    }
+    function saveLocal(rows) {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(rows || [])); } catch (e) {}
+    }
+    function makeId() {
+      if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+      return 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    }
+
+    // localStorage also holds {text, emoji, prio} for cloud rows (these fields
+    // are NOT stored in Supabase per the user's choice). These helpers keep the
+    // local enrichment rows in sync with the cloud rows by id.
+    function findLocalRow(id) {
+      var rows = loadLocal();
+      for (var i = 0; i < rows.length; i++) if (rows[i].id === id) return rows[i];
+      return null;
+    }
+    function upsertLocalRow(row) {
+      var rows = loadLocal();
+      var found = false;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].id === row.id) { rows[i] = row; found = true; break; }
+      }
+      if (!found) rows.push(row);
+      saveLocal(rows);
+    }
+    function removeLocalRow(id) {
+      saveLocal(loadLocal().filter(function (r) { return r.id !== id; }));
+    }
+
+    function setStatus(mode) {
+      storageMode = mode;
+      var chip = document.getElementById('storageStatus');
+      if (!chip) return;
+      chip.className = 'storage-chip ' + mode;
+      chip.textContent = mode === 'supabase'
+        ? '☁️ Saved to Supabase'
+        : mode === 'local'
+          ? '💾 Local only — run setup SQL for cloud sync'
+          : '⏳ Connecting…';
+    }
+
+    // Probe Supabase with a tiny SELECT. On any failure (no RLS, wrong schema,
+    // network) we fall back to localStorage so the app still works for the user.
+    function probeStorage() {
+      if (!sb) { setStatus('local'); return Promise.resolve(); }
+      setStatus('probing');
+      return sb.from('todos').select('id').limit(1)
+        .then(function (res) {
+          if (res.error) throw res.error;
+          setStatus('supabase');
+        })
+        .catch(function () { setStatus('local'); });
+    }
+
+    function formatDate(d) {
+      if (!d) return '';
+      var date = new Date(d + 'T00:00:00');
+      if (isNaN(date.getTime())) return d;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function prioLabel(p) {
+      return p === 'low' ? 'Low' : p === 'high' ? 'High' : 'Medium';
+    }
+
+    function selectAll(el) {
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function showError(msg) {
+      list.innerHTML = '';
+      var err = document.createElement('li');
+      err.className = 'todo-empty';
+      err.style.color = '#c0395f';
+      err.textContent = msg;
+      list.appendChild(err);
+      counter.textContent = '';
+    }
+
+    function updateCounter() {
+      var total = items.length;
+      var done = 0;
+      for (var i = 0; i < items.length; i++) if (items[i].done) done++;
+      if (total === 0) {
+        counter.textContent = '';
+      } else {
+        counter.innerHTML = '<span class="done-count">' + done + '</span> of ' + total + ' tasks completed';
+      }
+    }
+
+    // Read all todos, ordered by creation time. Uses Supabase if the probe
+    // succeeded; otherwise localStorage so the app keeps working.
+    function fetchTodos() {
+      list.innerHTML = '';
+      var loading = document.createElement('li');
+      loading.className = 'todo-empty';
+      loading.textContent = 'Loading tasks…';
+      list.appendChild(loading);
+      counter.textContent = '';
+
+      if (storageMode === 'supabase' && sb) {
+        sb.from('todos').select('*').order('created_at', { ascending: true })
+          .then(function (res) {
+            if (res.error) {
+              // RLS/schema not ready → fall back so the user can still add tasks.
+              setStatus('local');
+              items = loadLocal();
+              render();
+              return;
+            }
+            // All fields live in Supabase now: id, text, is_complete, date,
+            // priority, emoji, created_at. No localStorage merge needed.
+            items = (res.data || []).map(function (row) {
+              return {
+                id: row.id,
+                text: row.text || '',
+                date: row.date,
+                done: row.is_complete,
+                emoji: row.emoji || '📝',
+                prio: row.priority || 'med',
+                created_at: row.created_at
+              };
+            });
+            render();
+          })
+          .catch(function () {
+            setStatus('local');
+            items = loadLocal();
+            render();
+          });
+      } else {
+        items = loadLocal();
+        render();
+      }
+    }
+
+    function toggleDone(id, done) {
+      if (storageMode === 'supabase' && sb) {
+        sb.from('todos').update({ is_complete: done }).eq('id', id)
+          .then(function (res) { if (res.error) { console.error(res.error); fetchTodos(); } })
+          .catch(function (err) { console.error(err); fetchTodos(); });
+      } else {
+        var rows = loadLocal();
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].id === id) { rows[i].done = done; break; }
+        }
+        saveLocal(rows);
+      }
+    }
+
+    function updateText(id, text) {
+      if (storageMode === 'supabase' && sb) {
+        sb.from('todos').update({ text: text }).eq('id', id)
+          .then(function (res) { if (res.error) { console.error(res.error); fetchTodos(); } })
+          .catch(function (err) { console.error(err); fetchTodos(); });
+      } else {
+        var rows = loadLocal();
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].id === id) { rows[i].text = text; break; }
+        }
+        saveLocal(rows);
+      }
+    }
+
+    function deleteTodo(id) {
+      if (storageMode === 'supabase' && sb) {
+        sb.from('todos').delete().eq('id', id)
+          .then(function (res) { if (res.error) { console.error(res.error); fetchTodos(); } })
+          .catch(function (err) { console.error(err); fetchTodos(); });
+      } else {
+        var rows = loadLocal().filter(function (r) { return r.id !== id; });
+        saveLocal(rows);
+      }
+      removeLocalRow(id);  // drop local enrichment (text/emoji/prio) too
+    }
+
+    function render() {
+      list.innerHTML = '';
+      updateCounter();
+
+      if (items.length === 0) {
+        var empty = document.createElement('li');
+        empty.className = 'todo-empty';
+        empty.textContent = 'Nothing to do yet — add your first task above!';
+        list.appendChild(empty);
+        return;
+      }
+
+      items.forEach(function (item) {
+        var prio = item.prio || 'med';
+        var li = document.createElement('li');
+        li.className = 'todo-item prio-' + prio + (item.done ? ' done' : '');
+
+        // Checkbox (custom round checkmark).
+        var label = document.createElement('label');
+        label.className = 'todo-check';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!item.done;
+        cb.setAttribute('aria-label', 'Mark task done');
+        cb.addEventListener('change', function () {
+          item.done = cb.checked;     // optimistic
+          render();
+          toggleDone(item.id, cb.checked);
+        });
+        var mark = document.createElement('span');
+        mark.className = 'checkmark';
+        label.appendChild(cb);
+        label.appendChild(mark);
+        li.appendChild(label);
+
+        // Emoji tag.
+        var emoji = document.createElement('span');
+        emoji.className = 'todo-emoji';
+        emoji.textContent = item.emoji || '📝';
+        emoji.setAttribute('aria-hidden', 'true');
+        li.appendChild(emoji);
+
+        // Task text + date (click the text to edit inline).
+        var content = document.createElement('div');
+        content.className = 'todo-content';
+        var text = document.createElement('span');
+        text.className = 'todo-text editable';
+        text.textContent = item.text;
+        text.title = 'Click to edit';
+        text.setAttribute('role', 'textbox');
+        text.tabIndex = 0;
+        (function (el, row) {
+          function enterEdit() {
+            el.setAttribute('contenteditable', 'true');
+            el.classList.add('editing');
+            el.focus();
+            selectAll(el);
+          }
+          el.addEventListener('click', function () {
+            if (el.getAttribute('contenteditable') !== 'true') enterEdit();
+          });
+          el.addEventListener('keydown', function (e) {
+            if (el.getAttribute('contenteditable') !== 'true') {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enterEdit(); }
+              return;
+            }
+            if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+            else if (e.key === 'Escape') { e.preventDefault(); el.textContent = row.text; el.blur(); }
+          });
+          el.addEventListener('blur', function () {
+            el.removeAttribute('contenteditable');
+            el.classList.remove('editing');
+            var val = el.textContent.trim();
+            if (val && val !== row.text) {
+              row.text = val;          // optimistic
+              el.textContent = val;
+              updateText(row.id, val);
+            } else {
+              el.textContent = row.text;
+            }
+          });
+          el.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var data = (e.clipboardData || window.clipboardData).getData('text');
+            document.execCommand('insertText', false, data);
+          });
+        })(text, item);
+        var date = document.createElement('span');
+        date.className = 'todo-date';
+        date.textContent = formatDate(item.date);
+        content.appendChild(text);
+        content.appendChild(date);
+        li.appendChild(content);
+
+        // Priority badge.
+        var prioBadge = document.createElement('span');
+        prioBadge.className = 'todo-prio prio-' + prio;
+        prioBadge.textContent = prioLabel(prio);
+        li.appendChild(prioBadge);
+
+        // Delete button (X).
+        var del = document.createElement('button');
+        del.className = 'todo-delete';
+        del.type = 'button';
+        del.setAttribute('aria-label', 'Delete task');
+        del.textContent = '×';
+        del.addEventListener('click', function () {
+          var id = item.id;
+          var i = items.indexOf(item);
+          if (i >= 0) items.splice(i, 1);  // optimistic
+          render();
+          deleteTodo(id);
+        });
+        li.appendChild(del);
+
+        list.appendChild(li);
+      });
+    }
+
+    function addTaskLocal(payload) {
+      var row = Object.assign({ id: makeId(), created_at: new Date().toISOString() }, payload);
+      var rows = loadLocal();
+      rows.push(row);
+      saveLocal(rows);
+      taskInput.value = '';
+      items.push(row);
+      render();
+      taskInput.focus();
+    }
+
+    function addTask() {
+      var text = taskInput.value.trim();
+      var date = dateInput.value;
+      if (!text) { taskInput.focus(); return; }
+      if (addBtn.disabled) return;            // a save is already in flight
+      var payload = { text: text, date: date, done: false, emoji: selectedEmoji, prio: selectedPrio };
+
+      if (storageMode === 'supabase' && sb) {
+        addBtn.disabled = true;
+        // Supabase columns: id, text, is_complete, date, priority, emoji, created_at.
+        sb.from('todos').insert({ text: text, is_complete: false, date: date, priority: selectedPrio, emoji: selectedEmoji }).select()
+          .then(function (res) {
+            addBtn.disabled = false;
+            if (res.error) {
+              // Cloud write failed (schema/RLS not ready). Flip to local so the
+              // user's task is never lost, and so all future ops use local.
+              console.error('Supabase insert failed, falling back to local:', res.error.message);
+              setStatus('local');
+              addTaskLocal(payload);
+              return;
+            }
+            var cloudRow = res.data && res.data[0];
+            if (!cloudRow) {
+              // RLS blocked the returning row; we can't link the just-typed text
+              // to a cloud id, so keep this row local-only.
+              setStatus('local');
+              addTaskLocal(payload);
+              return;
+            }
+            var row = {
+              id: cloudRow.id,
+              text: cloudRow.text || text,
+              date: cloudRow.date || date,
+              done: cloudRow.is_complete !== undefined ? cloudRow.is_complete : false,
+              emoji: cloudRow.emoji || selectedEmoji,
+              prio: cloudRow.priority || selectedPrio,
+              created_at: cloudRow.created_at || new Date().toISOString()
+            };
+            upsertLocalRow(row);            // mirror to localStorage as a backup
+            taskInput.value = '';
+            items.push(row);
+            render();
+            taskInput.focus();
+          })
+          .catch(function (err) {
+            addBtn.disabled = false;
+            console.error('Supabase insert threw, falling back to local:', err && err.message);
+            setStatus('local');
+            addTaskLocal(payload);
+          });
+      } else {
+        addTaskLocal(payload);
+      }
+    }
+
+    addBtn.addEventListener('click', addTask);
+    taskInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') addTask();
+    });
+
+    probeStorage().then(fetchTodos);
+  })();
+  </script>
+</body>
+</html>
